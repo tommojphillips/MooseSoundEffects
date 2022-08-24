@@ -5,23 +5,23 @@ using System.Resources;
 [assembly: AssemblyTitle("MooseSounds")]
 [assembly: AssemblyDescription("Adds moose death/run sounds")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Tommo J. Productions")]
+[assembly: AssemblyCompany("Tommo J. Productions / Pentti \"Einari\" Kervinen")]
 [assembly: AssemblyProduct("MooseSounds")]
-[assembly: AssemblyCopyright("Tommo J. Productions Copyright © 2022")]
+[assembly: AssemblyCopyright("Tommo J. Productions / Pentti \"Einari\" Kervinen Copyright © 2022")]
 [assembly: AssemblyTrademark("Azine")]
 [assembly: NeutralResourcesLanguage("en-AU")]
 
 // Version information
-[assembly: AssemblyVersion("1.0.234.6")]
-[assembly: AssemblyFileVersion("1.0.234.6")]
+[assembly: AssemblyVersion("1.0.235.22")]
+[assembly: AssemblyFileVersion("1.0.235.22")]
 
 namespace TommoJProductions.MooseSounds
 {
 
     public class VersionInfo
     {
-	    public const string LASTEST_RELEASE = "23.08.2022 10:55 AM";
-	    public const string VERSION = "1.0.234.6";
+	    public const string LASTEST_RELEASE = "24.08.2022 09:02 PM";
+	    public const string VERSION = "1.0.235.22";
 
         /// <summary>
         /// Represents if the mod has been complied for x64

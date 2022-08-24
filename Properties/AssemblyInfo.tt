@@ -29,9 +29,9 @@ using System.Resources;
 [assembly: AssemblyTitle("<#= this.assemblyTitle #>")]
 [assembly: AssemblyDescription("Adds moose death/run sounds")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Tommo J. Productions")]
+[assembly: AssemblyCompany("Tommo J. Productions / Pentti \"Einari\" Kervinen")]
 [assembly: AssemblyProduct("<#= this.assemblyTitle #>")]
-[assembly: AssemblyCopyright("Tommo J. Productions Copyright © <#= DateTime.Now.ToString("yyyy") #>")]
+[assembly: AssemblyCopyright("Tommo J. Productions / Pentti \"Einari\" Kervinen Copyright © <#= DateTime.Now.ToString("yyyy") #>")]
 [assembly: AssemblyTrademark("Azine")]
 [assembly: NeutralResourcesLanguage("en-AU")]
 
