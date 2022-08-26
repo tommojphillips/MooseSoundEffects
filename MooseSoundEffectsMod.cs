@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,20 +7,26 @@ using System.Runtime.InteropServices.ComTypes;
 
 using AudioLibrary;
 
+using MooseSounds;
+
 using MSCLoader;
 using UnityEngine;
 using UnityEngine.Audio;
 
 namespace TommoJProductions.MooseSounds
 {
+    // CREDITS
+    // Developed by, Tommee J. Armytage.
+
+    // Mod Idea by, Pentti "Einari" Kervinen. "Death and random noises while moose in running state"
+    // Audio files by, Pentti "Einari" Kervinen
+
+    /// <summary>
+    /// Represents the moose sounds effects mod.
+    /// </summary>
     public class MooseSoundEffectsMod : Mod
     {
         // Written, 23.08.2022 (Start Date)
-
-        // Developed by, Tommee J. Armytage.
-
-        // Mod Idea by, Pentti "Einari" Kervinen
-        // Audio files by, Pentti "Einari" Kervinen
 
         public override string ID => "MooseSounds"; //Your mod ID (unique)
         public override string Name => "Moose Sounds"; //You mod name
@@ -28,15 +35,30 @@ namespace TommoJProductions.MooseSounds
         public override string Description => "Adds death and random occuring running audio for the moose."; //Short description of your mod
         public override bool UseAssetsFolder => true;
 
+        private const string fileName = "mooseSaveData.txt";
         private AudioClip[] mooseDeathAudio;
         private AudioClip[] mooseRunAudio;
 
         private readonly string readmeContents = "{0} sounds go in this folder\n\nYou can add any number of audio files here for {0} and when said action occurs, a random audio file will play.";
-        
+        private readonly string ragdollPath = "Offset/dead moose(xxxxx)";
+
         private AudioSource audioSource;
 
         private DirectoryInfo mooseDeathAudioDirectory;
         private DirectoryInfo mooseRunAudioDirectory;
+
+        private GameObject animalsMoose;
+        private GameObject moosePrefab;
+        private GameObject mooseDeadRagdollPrefab;
+
+        private static int numberOfExtraMoose = 3;
+        private int totalMooses = 0;
+
+        private bool reloadingAudio = false;
+
+        private SettingsSliderInt extraMooseSlider;
+
+        private MooseSaveData mooseSaveData;
 
         #region Constructors
 
@@ -53,12 +75,46 @@ namespace TommoJProductions.MooseSounds
         public override void ModSetup()
         {
             SetupFunction(Setup.OnLoad, onLoad);
+            SetupFunction(Setup.OnSave, onSave);
         }
         public override void ModSettings()
         {
-            MSCLoader.Settings.AddButton(this, "loadAudio", "Reload audio", loadAudio);
+            MSCLoader.Settings.AddButton(this, "loadAudio", reloadingAudio ? "Reloading...." : "Reload audio", reloadAudio);
+            if (animalsMoose)
+            {
+                MSCLoader.Settings.AddButton(this, "toggleMoosesActive", animalsMoose.activeInHierarchy ? "Deactivate Mooses" : "Activate Mooses", 
+                    () =>  numberOfExtraMoose = (int)extraMooseSlider.Instance.Value);
+            }
+            MSCLoader.Settings.AddButton(this, "addMoose", "add moose", delegate ()
+            {
+                spawnMoose();
+                initMoose(totalMooses);
+            });
+            extraMooseSlider = MSCLoader.Settings.AddSlider(this, "numberOfExtraMoose", "Number of extra moose", 0, 100, numberOfExtraMoose, 
+                () => numberOfExtraMoose = extraMooseSlider.GetValue());
         }
+        public override void ModSettingsLoaded()
+        {
+            numberOfExtraMoose = extraMooseSlider.GetValue();
+        }
+       
+        private void onSave() 
+        {
+            // Written, 26.08.2022
 
+            MooseSaveData mooseSaveData = new MooseSaveData();
+            MooseTransformSaveData sd = new MooseTransformSaveData();
+            for (int i = 0; i < mooseThatAreDead.Count; i++)
+            {
+                sd = new MooseTransformSaveData()
+                {
+                    position = mooseThatAreDead[i].position,
+                    eulerAngles = mooseThatAreDead[i].eulerAngles,
+                };
+                mooseSaveData.deadMoose.Add(sd);
+            }
+            SaveLoad.SerializeSaveFile(this, mooseSaveData, fileName);
+        }
         private void onLoad()
         {
             // Written, 23.08.2022
@@ -70,6 +126,9 @@ namespace TommoJProductions.MooseSounds
             // inject death audio logic.
             // inject random running audio logic.
 
+            loadSaveFile();
+            initializeDeadMoose();
+
             vaildateAssetFolder();
             setupMooses();
             loadAudio();
@@ -77,44 +136,165 @@ namespace TommoJProductions.MooseSounds
             ModConsole.Print("[MooseSounds] - loaded");
         }
 
+
         #endregion
 
         #region Methods
 
+        private void loadSaveFile()
+        {
+            // Written, 26.08.2022
+
+            if (File.Exists(ModLoader.GetModSettingsFolder(this) + "/" + fileName))
+            {
+                mooseSaveData = SaveLoad.DeserializeSaveFile<MooseSaveData>(this, fileName);
+            }
+        }
+
+        private void initializeDeadMoose()
+        {
+            // Written, 26.08.2022
+
+            mooseThatAreDead.Clear();
+
+            if (mooseSaveData != null)
+            {
+                ModConsole.Print("Loading all dead moose from save file " + mooseSaveData.deadMoose.Count);
+                for (int i = 0; i < mooseSaveData.deadMoose.Count; i++)
+                {
+                    GameObject deadMoose = UnityEngine.Object.Instantiate(mooseDeadRagdollPrefab);
+                    deadMoose.transform.position = mooseSaveData.deadMoose[i].position;
+                    deadMoose.transform.eulerAngles = mooseSaveData.deadMoose[i].eulerAngles;
+                    deadMoose.SetActive(true);
+                    mooseThatAreDead.Add(deadMoose.transform);
+                }
+            }
+        }
         private void setupMooses()
         {
             // Written, 24.08.2022
 
-            GameObject animalsMoose = GameObject.Find("MAP/StreetLights").GetPlayMaker("Lights Switch").FsmVariables.GetFsmGameObject("Mooses").Value;
-            
-            GameObject audioSourceGo = new GameObject("MooseSoundsAudioSource");
-            audioSource = audioSourceGo.AddComponent<AudioSource>();
-            audioSource.volume = 1;
-            audioSource.minDistance = 5;
-            audioSource.maxDistance = 100;
-            audioSource.playOnAwake = false;
+            animalsMoose = GameObject.Find("MAP/StreetLights").GetPlayMaker("Lights Switch").FsmVariables.GetFsmGameObject("Mooses").Value;
+            createMoosePrefab();
+            setupAudioSource();
+
+            for (int i = 0; i < numberOfExtraMoose; i++)
+            {
+                spawnMoose();
+            }
 
             for (int i = 1; i < animalsMoose.transform.childCount; i++)
             {
-                initMoose(i, animalsMoose);
+                initMoose(i);
             }
         }
-        private void initMoose(int childIndex, GameObject animalsMoose)
+        private void initMoose(int childIndex)
         {
             // Written, 24.08.2022
 
-            GameObject moose = animalsMoose.transform.GetChild(childIndex).gameObject;
-            GameObject mooseDead = moose.transform.Find("Offset/dead moose(xxxxx)").gameObject;
-            DeadMooseCallback callback = mooseDead.AddComponent<DeadMooseCallback>();
-            callback.onEnable += onMooseDead;
+            totalMooses++;
+
+            GameObject moose = getMooseAtIndex(childIndex);
+            if (moose)
+            {
+                GameObject mooseDead = moose.transform.Find(ragdollPath).gameObject;
+                DeadMooseCallback callback = mooseDead.AddComponent<DeadMooseCallback>();
+                callback.onEnable += onMooseDead;
+
+#if DEBUG
+                ModConsole.Print($"Moose{childIndex}: initialized.");
+#endif
+            }
+            else
+            {
+                ModConsole.Warning($"Moose{childIndex}: could not find moose.");
+            }
+        }
+        private GameObject getMooseAtIndex(int childIndex)
+        {
+            // Written, 26.08.2022
+           
+            if (childIndex < animalsMoose.transform.childCount)
+            {
+                return animalsMoose.transform.GetChild(childIndex).gameObject;
+
+            }
+            return null;
+        }
+        private void createMoosePrefab()
+        {
+            // Written, 26.08.2022
+
+            moosePrefab = UnityEngine.Object.Instantiate(getMooseAtIndex(1));
+            moosePrefab.name = "MoosePrefab";
+            moosePrefab.SetActive(false);
+
+            mooseDeadRagdollPrefab = UnityEngine.Object.Instantiate(moosePrefab.transform.Find("Offset/dead moose(xxxxx)").gameObject);
+            mooseDeadRagdollPrefab.name = "MooseRagdollPrefab";
+            mooseDeadRagdollPrefab.SetActive(false);
+        }
+        private void spawnMoose() 
+        {
+            // Written, 26.08.2022
+
+            GameObject newMoose = GameObject.Instantiate(moosePrefab);
+            newMoose.name = "Moose";
+            newMoose.transform.parent = animalsMoose.transform;
+            newMoose.SetActive(true);
+
+#if DEBUG
+            ModConsole.Print($"spawned new moose. {animalsMoose.transform.childCount - 1}");
+#endif
         }
 
+        private void setupAudioSource() 
+        {
+            // Written, 26.08.2022
+
+            GameObject audioSourceGo = new GameObject("MooseSoundsAudioSource");
+            audioSource = audioSourceGo.AddComponent<AudioSource>();
+            audioSource.spatialBlend = 1;
+            audioSource.rolloffMode = AudioRolloffMode.Linear;
+            audioSource.minDistance = 0;
+            audioSource.maxDistance = 100;
+            audioSource.playOnAwake = false;
+            audioSource.volume = 1;
+            audioSource.spread = 5;
+        }
+        private void reloadAudio()
+        {
+            // Written, 26.08.2022
+
+            if (!reloadingAudio)
+            {
+                reloadingAudio = true;
+                destoryAudio(mooseDeathAudio);
+                destoryAudio(mooseRunAudio);
+                loadAudio();
+                reloadingAudio = false;
+            }
+        }
         private void loadAudio()
         {
             // Written, 23.08.2022
 
             mooseDeathAudio = loadAudioFromFiles(getAudioFilesInDirectory(mooseDeathAudioDirectory));
             mooseRunAudio = loadAudioFromFiles(getAudioFilesInDirectory(mooseRunAudioDirectory));
+        }
+        private void destoryAudio(AudioClip[] clips)
+        {
+            // Written, 26.08.2022
+
+            if (clips != null)
+            {
+                for (int i = 0; i < clips.Length; i++)
+                {
+                    if (clips[i] != null)
+                    {
+                        UnityEngine.Object.Destroy(clips[i]);
+                    }
+                }
+            }
         }
         private AudioClip[] loadAudioFromFiles(string[] files)
         {
@@ -140,10 +320,9 @@ namespace TommoJProductions.MooseSounds
         }
         private AudioClip getRandomAudio(AudioClip[] audioClips)
         {
-            // Written, 24.08.2022
+            // Written, 26.08.2022
 
-            int randomIndex = Random.Range(0, audioClips.Length + 1); // min: is inclusive where max: is exclusive. thus if just passing 'array.Length'. random will never get the last audioclip in array.
-
+            int randomIndex = UnityEngine.Random.Range(0, audioClips.Length);
             return audioClips[randomIndex];
         }
         
@@ -196,9 +375,13 @@ namespace TommoJProductions.MooseSounds
 
         #region Event handlers
 
+        private List<Transform> mooseThatAreDead = new List<Transform>();
+
         private void onMooseDead(DeadMooseCallback callback)
         {
             // Written, 24.08.2022
+
+            mooseThatAreDead.Add(callback.transform);
 
             if (mooseDeathAudio != null)
             {
@@ -208,6 +391,9 @@ namespace TommoJProductions.MooseSounds
                     audioSource.Stop();
                 audioSource.Play();
             }
+
+            UnityEngine.Object.Destroy(callback);
+
 #if DEBUG
             ModConsole.Print("Moose death");   
 #endif

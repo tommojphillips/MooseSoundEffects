@@ -12,16 +12,16 @@ using System.Resources;
 [assembly: NeutralResourcesLanguage("en-AU")]
 
 // Version information
-[assembly: AssemblyVersion("1.0.235.22")]
-[assembly: AssemblyFileVersion("1.0.235.22")]
+[assembly: AssemblyVersion("1.0.237.13")]
+[assembly: AssemblyFileVersion("1.0.237.13")]
 
 namespace TommoJProductions.MooseSounds
 {
 
     public class VersionInfo
     {
-	    public const string LASTEST_RELEASE = "24.08.2022 09:02 PM";
-	    public const string VERSION = "1.0.235.22";
+	    public const string LASTEST_RELEASE = "26.08.2022 02:47 PM";
+	    public const string VERSION = "1.0.237.13";
 
         /// <summary>
         /// Represents if the mod has been complied for x64

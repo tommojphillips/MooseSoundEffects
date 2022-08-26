@@ -47,6 +47,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DeadMooseCallback.cs" />
+    <Compile Include="MooseSaveData.cs" />
     <Compile Include="MooseSoundEffectsMod.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <AutoGen>True</AutoGen>
