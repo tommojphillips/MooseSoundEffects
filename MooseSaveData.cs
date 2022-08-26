@@ -7,14 +7,15 @@ using UnityEngine;
 
 namespace MooseSounds
 {
-    public class MooseTransformSaveData
+    public struct Moose
     {
         public Vector3 position;
         public Vector3 eulerAngles;
+        public int meatGiven;
     }
 
     public class MooseSaveData
     {
-        public List<MooseTransformSaveData> deadMoose;
+        public List<Moose> deadMoose = new List<Moose>();
     }
 }

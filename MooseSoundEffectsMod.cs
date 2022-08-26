@@ -35,13 +35,18 @@ namespace TommoJProductions.MooseSounds
         public override string Description => "Adds death and random occuring running audio for the moose."; //Short description of your mod
         public override bool UseAssetsFolder => true;
 
-        private const string fileName = "mooseSaveData.txt";
+        private const string FILE_NAME = "mooseSaveData.txt";
+        private const string RAGDOLL_PATH = "Offset/" + RAGDOLL_NAME;
+        private const string RAGDOLL_NAME = "dead moose(xxxxx)";
+        private const string PLAYMAKER_ADD_FORCE_NAME = "Add Force";
+        private const string PLAYMAKER_CHOP_NAME = "Chop";
+        private const string CHOP_PIECES_NAME = "Pieces";
+
         private AudioClip[] mooseDeathAudio;
         private AudioClip[] mooseRunAudio;
 
         private readonly string readmeContents = "{0} sounds go in this folder\n\nYou can add any number of audio files here for {0} and when said action occurs, a random audio file will play.";
-        private readonly string ragdollPath = "Offset/dead moose(xxxxx)";
-
+        
         private AudioSource audioSource;
 
         private DirectoryInfo mooseDeathAudioDirectory;
@@ -51,7 +56,7 @@ namespace TommoJProductions.MooseSounds
         private GameObject moosePrefab;
         private GameObject mooseDeadRagdollPrefab;
 
-        private static int numberOfExtraMoose = 3;
+        private static int numberOfExtraMoose = 5;
         private int totalMooses = 0;
 
         private bool reloadingAudio = false;
@@ -87,7 +92,7 @@ namespace TommoJProductions.MooseSounds
             }
             MSCLoader.Settings.AddButton(this, "addMoose", "add moose", delegate ()
             {
-                spawnMoose();
+                spawnNewMoose();
                 initMoose(totalMooses);
             });
             extraMooseSlider = MSCLoader.Settings.AddSlider(this, "numberOfExtraMoose", "Number of extra moose", 0, 100, numberOfExtraMoose, 
@@ -103,17 +108,22 @@ namespace TommoJProductions.MooseSounds
             // Written, 26.08.2022
 
             MooseSaveData mooseSaveData = new MooseSaveData();
-            MooseTransformSaveData sd = new MooseTransformSaveData();
+            Moose sd = new Moose();
             for (int i = 0; i < mooseThatAreDead.Count; i++)
             {
-                sd = new MooseTransformSaveData()
+                int pieces = mooseThatAreDead[i].GetPlayMaker(PLAYMAKER_CHOP_NAME).FsmVariables.GetFsmInt(CHOP_PIECES_NAME).Value;
+                if (pieces < 4)
                 {
-                    position = mooseThatAreDead[i].position,
-                    eulerAngles = mooseThatAreDead[i].eulerAngles,
-                };
-                mooseSaveData.deadMoose.Add(sd);
+                    sd = new Moose()
+                    {
+                        position = mooseThatAreDead[i].position,
+                        eulerAngles = mooseThatAreDead[i].eulerAngles,
+                        meatGiven = pieces
+                    };
+                    mooseSaveData.deadMoose.Add(sd);
+                }
             }
-            SaveLoad.SerializeSaveFile(this, mooseSaveData, fileName);
+            SaveLoad.SerializeSaveFile(this, mooseSaveData, FILE_NAME);
         }
         private void onLoad()
         {
@@ -125,9 +135,6 @@ namespace TommoJProductions.MooseSounds
             // find moose spawner ? / find all moose at game start ?           
             // inject death audio logic.
             // inject random running audio logic.
-
-            loadSaveFile();
-            initializeDeadMoose();
 
             vaildateAssetFolder();
             setupMooses();
@@ -145,13 +152,13 @@ namespace TommoJProductions.MooseSounds
         {
             // Written, 26.08.2022
 
-            if (File.Exists(ModLoader.GetModSettingsFolder(this) + "/" + fileName))
+            if (File.Exists(ModLoader.GetModSettingsFolder(this) + "/" + FILE_NAME))
             {
-                mooseSaveData = SaveLoad.DeserializeSaveFile<MooseSaveData>(this, fileName);
+                mooseSaveData = SaveLoad.DeserializeSaveFile<MooseSaveData>(this, FILE_NAME);
             }
         }
 
-        private void initializeDeadMoose()
+        private void initDeadMooses()
         {
             // Written, 26.08.2022
 
@@ -159,13 +166,15 @@ namespace TommoJProductions.MooseSounds
 
             if (mooseSaveData != null)
             {
-                ModConsole.Print("Loading all dead moose from save file " + mooseSaveData.deadMoose.Count);
+                ModConsole.Print("Loading all dead mooses from save file " + mooseSaveData.deadMoose.Count);
                 for (int i = 0; i < mooseSaveData.deadMoose.Count; i++)
                 {
                     GameObject deadMoose = UnityEngine.Object.Instantiate(mooseDeadRagdollPrefab);
+                    deadMoose.GetPlayMaker(PLAYMAKER_CHOP_NAME).FsmVariables.GetFsmInt(CHOP_PIECES_NAME).Value = Mathf.Clamp(mooseSaveData.deadMoose[i].meatGiven, 0, 3);
                     deadMoose.transform.position = mooseSaveData.deadMoose[i].position;
                     deadMoose.transform.eulerAngles = mooseSaveData.deadMoose[i].eulerAngles;
                     deadMoose.SetActive(true);
+                    deadMoose.name = RAGDOLL_NAME;
                     mooseThatAreDead.Add(deadMoose.transform);
                 }
             }
@@ -175,18 +184,21 @@ namespace TommoJProductions.MooseSounds
             // Written, 24.08.2022
 
             animalsMoose = GameObject.Find("MAP/StreetLights").GetPlayMaker("Lights Switch").FsmVariables.GetFsmGameObject("Mooses").Value;
-            createMoosePrefab();
-            setupAudioSource();
+            createMoosePrefabs();
+            initAudioSource();
 
             for (int i = 0; i < numberOfExtraMoose; i++)
             {
-                spawnMoose();
+                spawnNewMoose();
             }
 
             for (int i = 1; i < animalsMoose.transform.childCount; i++)
             {
                 initMoose(i);
             }
+
+            loadSaveFile();
+            initDeadMooses();
         }
         private void initMoose(int childIndex)
         {
@@ -197,7 +209,7 @@ namespace TommoJProductions.MooseSounds
             GameObject moose = getMooseAtIndex(childIndex);
             if (moose)
             {
-                GameObject mooseDead = moose.transform.Find(ragdollPath).gameObject;
+                GameObject mooseDead = moose.transform.Find(RAGDOLL_PATH).gameObject;
                 DeadMooseCallback callback = mooseDead.AddComponent<DeadMooseCallback>();
                 callback.onEnable += onMooseDead;
 
@@ -221,7 +233,7 @@ namespace TommoJProductions.MooseSounds
             }
             return null;
         }
-        private void createMoosePrefab()
+        private void createMoosePrefabs()
         {
             // Written, 26.08.2022
 
@@ -229,11 +241,12 @@ namespace TommoJProductions.MooseSounds
             moosePrefab.name = "MoosePrefab";
             moosePrefab.SetActive(false);
 
-            mooseDeadRagdollPrefab = UnityEngine.Object.Instantiate(moosePrefab.transform.Find("Offset/dead moose(xxxxx)").gameObject);
+            mooseDeadRagdollPrefab = UnityEngine.Object.Instantiate(moosePrefab.transform.Find(RAGDOLL_PATH).gameObject);
+            UnityEngine.Object.Destroy(mooseDeadRagdollPrefab.GetPlayMaker(PLAYMAKER_ADD_FORCE_NAME));
             mooseDeadRagdollPrefab.name = "MooseRagdollPrefab";
             mooseDeadRagdollPrefab.SetActive(false);
         }
-        private void spawnMoose() 
+        private void spawnNewMoose() 
         {
             // Written, 26.08.2022
 
@@ -247,7 +260,7 @@ namespace TommoJProductions.MooseSounds
 #endif
         }
 
-        private void setupAudioSource() 
+        private void initAudioSource() 
         {
             // Written, 26.08.2022
 
@@ -392,11 +405,19 @@ namespace TommoJProductions.MooseSounds
                 audioSource.Play();
             }
 
+            UnityEngine.Object.Destroy(callback.transform.GetPlayMaker(PLAYMAKER_ADD_FORCE_NAME));
             UnityEngine.Object.Destroy(callback);
 
 #if DEBUG
             ModConsole.Print("Moose death");   
 #endif
+        }
+
+        private void onDeadMooseChoppedUp() 
+        {
+            // Written, 28.08.2022
+
+
         }
 
         #endregion
