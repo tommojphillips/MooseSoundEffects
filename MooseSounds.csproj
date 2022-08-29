@@ -21,14 +21,18 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>none</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <DefineConstants>
+    </DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="PlayMaker, Version=1.6.0.0, Culture=neutral, PublicKeyToken=null" />
@@ -47,6 +51,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DeadMooseCallback.cs" />
+    <Compile Include="Extentions.cs" />
+    <Compile Include="MooseDevTools.cs" />
+    <Compile Include="MooseRunStateSounds.cs" />
     <Compile Include="MooseSaveData.cs" />
     <Compile Include="MooseSoundEffectsMod.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">

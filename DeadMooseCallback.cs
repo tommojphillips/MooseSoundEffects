@@ -1,5 +1,4 @@
 ﻿using System;
-using MSCLoader;
 using UnityEngine;
 
 namespace TommoJProductions.MooseSounds
