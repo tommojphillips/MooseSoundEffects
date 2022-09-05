@@ -52,8 +52,11 @@
   <ItemGroup>
     <Compile Include="DeadMooseCallback.cs" />
     <Compile Include="Extentions.cs" />
+    <Compile Include="Moose.cs" />
     <Compile Include="MooseDevTools.cs" />
-    <Compile Include="MooseRunStateSounds.cs" />
+    <Compile Include="MooseExtendedRouteStateAction.cs" />
+    <Compile Include="MooseRoute.cs" />
+    <Compile Include="MooseRunState.cs" />
     <Compile Include="MooseSaveData.cs" />
     <Compile Include="MooseSoundEffectsMod.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">

@@ -7,7 +7,10 @@ using System.Runtime.InteropServices.ComTypes;
 
 using AudioLibrary;
 
+using HutongGames.PlayMaker;
+
 using MSCLoader;
+
 using UnityEngine;
 using UnityEngine.Audio;
 
@@ -54,12 +57,20 @@ namespace TommoJProductions.MooseSounds
 
         #region Properties / Fields
 
-        internal static AudioClip[] mooseRunAudioClips { get; private set; }
+        public static MooseSoundEffectsMod instance 
+        {
+            get;
+            private set;
+        }
 
         private AudioClip[] mooseDeathAudioClips;
+        internal AudioClip[] mooseRunAudioClips { get; private set; }
+        internal GameObject[] gameRoutes { get; private set; }
 
         internal List<Transform> allDeadMoose = new List<Transform>();
-        internal List<Transform> allAliveMoose = new List<Transform>();
+        internal List<Moose> allAliveMoose = new List<Moose>();
+
+        internal List<MooseRoute> mooseRoutes = new List<MooseRoute>();
 
         private AudioSource audioSource;
 
@@ -70,9 +81,10 @@ namespace TommoJProductions.MooseSounds
         private GameObject deadMoosePrefab;
         private GameObject towHookPrefab;
 
+        internal GameObject extendedRouteGo;
         private GameObject mooseSoundsModGo;
         internal GameObject animalsMoose;
-        internal static Transform player;
+        internal Transform player;
 
         private int numberOfExtraMoose = 3;
 
@@ -80,9 +92,18 @@ namespace TommoJProductions.MooseSounds
 
         private SettingsSliderInt extraMooseSlider;
 
-        private MooseSaveData mooseSaveData;
+        private MooseSoundsModSaveData mooseSaveData;
+        private int totalSpawnedMoose;
+
 
         #endregion
+
+        public MooseSoundEffectsMod() 
+        {
+            // Written, 05.09.2022
+
+            instance = this;
+        }
 
         #region Mod setup
 
@@ -120,14 +141,14 @@ namespace TommoJProductions.MooseSounds
         {
             // Written, 26.08.2022
 
-            MooseSaveData mooseSaveData = new MooseSaveData();
-            Moose sd = new Moose();
+            MooseSoundsModSaveData mooseSaveData = new MooseSoundsModSaveData();
+            MooseSaveData sd = new MooseSaveData();
             for (int i = 0; i < allDeadMoose.Count; i++)
             {
                 int pieces = allDeadMoose[i].GetPlayMaker(PLAYMAKER_CHOP_NAME).FsmVariables.GetFsmInt(CHOP_PIECES_NAME).Value;
                 if (pieces < 4)
                 {
-                    sd = new Moose()
+                    sd = new MooseSaveData()
                     {
                         position = allDeadMoose[i].position,
                         eulerAngles = allDeadMoose[i].eulerAngles,
@@ -145,6 +166,8 @@ namespace TommoJProductions.MooseSounds
             mooseSoundsModGo = new GameObject("Moose Sounds");
             animalsMoose = GameObject.Find("MAP/StreetLights").GetPlayMaker("Lights Switch").FsmVariables.GetFsmGameObject("Mooses").Value;
             player = PlayMakerGlobals.Instance.Variables.FindFsmGameObject("SavePlayer").Value.transform;
+
+            initMooseRoutes();
 
             createDevMode();
 
@@ -167,6 +190,38 @@ namespace TommoJProductions.MooseSounds
 
         #region Methods
 
+        private void initMooseRoutes() 
+        {
+            // Written, 29.08.2022
+
+            GameObject routes = animalsMoose.transform.Find("Routes").gameObject;
+            gameRoutes = routes.getChildren();
+            extendedRouteGo = new GameObject("ExtendedRoute");
+            extendedRouteGo.transform.parent = routes.transform;
+            addRoutes();
+        }
+        private void addRoutes() 
+        {
+            // Written, 05.09.2022
+
+            mooseRoutes.Add(new MooseRoute()
+            {
+                points = new List<Vector3>()
+                {
+                        new Vector3(-86.80993f, -2.095205f, 60.45926f),
+                        new Vector3(119.6148f, -2.543851f, -39.64285f),
+                        new Vector3(286.8706f, -3.134251f, 13.33761f),
+                        new Vector3(474.9058f, -2.669913f, 9.16772f),
+                        new Vector3(697.0464f, -2.200019f, -291.4772f),
+                        new Vector3(866.3936f, -3.462677f, -417.8925f),
+                        new Vector3(907.1868f, -1.439777f, -582.7089f),
+                        new Vector3(1024.39f, -0.9053732f, -742.7306f),
+                        new Vector3(1093.876f, 3.234932f, -913.9547f),
+                        new Vector3(1086.362f, 7.231291f, -953.6629f),
+                }
+            });
+        }
+
         private void createDevMode()
         {
             MooseDevTools dev = mooseSoundsModGo.AddComponent<MooseDevTools>();
@@ -178,17 +233,16 @@ namespace TommoJProductions.MooseSounds
             // Written, 26.08.2022
 
             aliveMoosePrefab = UnityEngine.Object.Instantiate(animalsMoose.transform.GetChild(1).gameObject);
+            aliveMoosePrefab.transform.parent = mooseSoundsModGo.transform;
             aliveMoosePrefab.name = "AliveMoosePrefab";
             aliveMoosePrefab.SetActive(false);
-            aliveMoosePrefab.transform.parent = mooseSoundsModGo.transform;
 
             deadMoosePrefab = UnityEngine.Object.Instantiate(aliveMoosePrefab.transform.Find(DEAD_MOOSE_PATH).gameObject);
             deadMoosePrefab.name = "DeadMoosePrefab";
             deadMoosePrefab.tag = "RAGDOLL";
             deadMoosePrefab.SetActive(false);
             deadMoosePrefab.transform.parent = mooseSoundsModGo.transform;
-            UnityEngine.Object.Destroy(deadMoosePrefab.GetPlayMaker(PLAYMAKER_ADD_FORCE_NAME));
-            
+            //UnityEngine.Object.Destroy(deadMoosePrefab.GetPlayMaker(PLAYMAKER_ADD_FORCE_NAME));            
         }
         private void createTowHookPrefab()
         {
@@ -214,7 +268,7 @@ namespace TommoJProductions.MooseSounds
 
             if (File.Exists(ModLoader.GetModSettingsFolder(this) + "/" + FILE_NAME))
             {
-                mooseSaveData = SaveLoad.DeserializeSaveFile<MooseSaveData>(this, FILE_NAME);
+                mooseSaveData = SaveLoad.DeserializeSaveFile<MooseSoundsModSaveData>(this, FILE_NAME);
             }
         }
 
@@ -258,20 +312,38 @@ namespace TommoJProductions.MooseSounds
                 }
             }
         }
-        private void initAliveMoose(GameObject moose)
+        private void initAliveMoose(GameObject mooseGo)
         {
             // Written, 24.08.2022
 
-            allAliveMoose.Add(moose.transform);
+            totalSpawnedMoose++;
+            Moose moose = new Moose();
+            moose.index = totalSpawnedMoose;
+            moose.mooseGo = mooseGo;
 
-            GameObject deadMooseGo = moose.transform.Find(DEAD_MOOSE_PATH).gameObject;
-            DeadMooseCallback callback = deadMooseGo.AddComponent<DeadMooseCallback>();
+            // run state sounds
+            moose.runState = mooseGo.AddComponent<MooseRunState>();
+            moose.runState.moose = moose;
+            moose.runState.onDestroy += preOnMooseDead;
+
+            // dead moose
+            moose.deadMooseGo = mooseGo.transform.Find(DEAD_MOOSE_PATH).gameObject;
+            DeadMooseCallback callback = moose.deadMooseGo.AddComponent<DeadMooseCallback>();
             callback.onEnable += postOnMooseDead;
 
-            initHookOnMoose(deadMooseGo);
+            // tow hook
+            initHookOnMoose(moose.deadMooseGo);
 
-            MooseRunStateSounds runState = moose.AddComponent<MooseRunStateSounds>();
-            runState.onDestroy += preOnMooseDead;
+            // extended route
+            PlayMakerFSM fsm = mooseGo.GetPlayMaker("Move");
+            moose.movePlayMaker = fsm;
+            FsmState randRoute = fsm.GetState("Randomize route");
+            moose.extendedRouteState = new MooseExtendedRouteStateAction();
+            moose.extendedRouteState.routeStart = fsm.FsmVariables.FindFsmGameObject("RouteStart");
+            moose.extendedRouteState.routeEnd = fsm.FsmVariables.FindFsmGameObject("RouteEnd");            
+            randRoute.InsertAction(2, moose.extendedRouteState);
+
+            allAliveMoose.Add(moose);
 
             ModConsole.Print("[MooseSounds] init alive moose" + allAliveMoose.Count);
         }
@@ -310,7 +382,7 @@ namespace TommoJProductions.MooseSounds
             initAliveMoose(newMoose);
             newMoose.SetActive(true);
         }
-        internal void spawnDeadMoose(Moose mooseData)
+        internal void spawnDeadMoose(MooseSaveData mooseData)
         {
             // Written, 27.08.2022
 
@@ -336,6 +408,7 @@ namespace TommoJProductions.MooseSounds
                 {
                     UnityEngine.Object.Destroy(allDeadMoose[i].gameObject);
                 }
+                allDeadMoose.Clear();
             }
         }
         private void deleteSaveData() 
@@ -423,11 +496,8 @@ namespace TommoJProductions.MooseSounds
             if (!Directory.Exists(directoryPath))
             {
                 info = Directory.CreateDirectory(directoryPath);
-                
-                StreamWriter sw = File.CreateText(directoryPath + "/readme.txt");
-                sw.Write(string.Format(README_CONTENTS, info.Name));
-                sw.Close();
-                sw.Dispose();
+
+                Extentions.writeToFile(directoryPath + "/readme.txt", string.Format(README_CONTENTS, info.Name));
             }
             else
             {
@@ -463,25 +533,23 @@ namespace TommoJProductions.MooseSounds
             if (mooseDeathAudioClips != null)
             {
                 audioSource.transform.position = callback.transform.position;
-                audioSource.clip = mooseDeathAudioClips.getRandomAudio();
+                audioSource.clip = mooseDeathAudioClips.getRandom();
                 if (audioSource.isPlaying)
                     audioSource.Stop();
                 audioSource.Play();
             }
-
-            UnityEngine.Object.Destroy(callback.transform.GetPlayMaker(PLAYMAKER_ADD_FORCE_NAME));
+            //UnityEngine.Object.Destroy(callback.transform.GetPlayMaker(PLAYMAKER_ADD_FORCE_NAME));
             UnityEngine.Object.Destroy(callback);
 
-            ModConsole.Print("Post Moose death");   
+            ModConsole.Print($"Moose die sound");
         }
-
-        private void preOnMooseDead(MooseRunStateSounds callback)
+        private void preOnMooseDead(MooseRunState callback)
         {
             // Written, 28.08.2022
 
-            allAliveMoose.Remove(callback.transform);
-
-            ModConsole.Print("Pre Moose death");   
+            allAliveMoose.Remove(allAliveMoose.firstOrDefault(m => m.index == callback.moose.index));
+            
+            ModConsole.Print($"Moose{callback.moose.index} death");
         }
 
         #endregion
