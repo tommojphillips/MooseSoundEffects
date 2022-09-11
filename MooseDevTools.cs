@@ -1,17 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-
 using UnityEngine;
+using MSCLoader;
 
 using static UnityEngine.GUILayout;
-using static TommoJProductions.MooseSounds.MooseSoundEffectsMod;
 using static TommoJProductions.MooseSounds.Extentions;
-using MSCLoader;
 
 namespace TommoJProductions.MooseSounds
 {
+
     public class MooseDevTools : MonoBehaviour
     {
         // Written, 29.08.2022
@@ -21,14 +19,22 @@ namespace TommoJProductions.MooseSounds
         private bool debugGUIOpen = false;
         private bool routeCreationOpen = false;
 
-        private int height = 500;
-        private int width = 500;
-        private int top = 100;
+        private int height = 550;
+        private int width = 750;
+        private int top = 25;
 
         private bool editingRoute = false;
         private MooseRoute route;
-        private string contents;
+        private Vector2 routeListScroll;
+        private ScrollViewScope routeListScrollView;
         private readonly List<GameObject> routePoints = new List<GameObject>();
+
+        void Awake() 
+        {
+            // Written, 09.09.2022
+
+            mod = MooseSoundEffectsMod.instance;
+        }
 
         void OnGUI()
         {
@@ -38,19 +44,22 @@ namespace TommoJProductions.MooseSounds
             {
                 using (new AreaScope(new Rect(Screen.width / 2 - width / 2, top, width, height)))
                 {
-                    Label($"Alive moose: {mod.allAliveMoose.Count}\nDead moose: {mod.allDeadMoose.Count}");
-
-                    if (Button(mod.animalsMoose.activeInHierarchy ? "Deactivate Mooses" : "Activate Mooses" + (editingRoute ? " <color=red>*</color>" : "")))
+                    Label($"Moose Mod DEV\nAlive moose: {mod.allAliveMoose.Count}\nDead moose: {mod.allDeadMoose.Count}");
+                    Space(10);
+                    if (Button(mod.animalsMoose.activeInHierarchy ? "Disable Mooses" : "Enable Mooses" + (editingRoute ? " <color=red>*</color>" : "")))
                     {
                         mod.animalsMoose.SetActive(!mod.animalsMoose.activeInHierarchy);
                     }
-                    if (Button("Spawn Alive Moose"))
+                    using (new HorizontalScope())
                     {
-                        mod.spawnAliveMoose();
-                    }
-                    if (Button("Spawn Dead Moose"))
-                    {
-                        mod.spawnDeadMoose(new MooseSaveData() { position = mod.player.position });
+                        if (Button("Spawn Alive Moose"))
+                        {
+                            mod.spawnAliveMoose();
+                        }
+                        if (Button("Spawn Dead Moose"))
+                        {
+                            mod.spawnDeadMoose(new DeadMooseSaveData() { position = mod.player.position });
+                        }
                     }
                     if (mod.allDeadMoose.Count > 0)
                     {
@@ -68,6 +77,20 @@ namespace TommoJProductions.MooseSounds
                     if (routeCreationOpen)
                     {
                         drawRouteCreation();
+                        if (Button("Save Routes"))
+                        {
+                            mod.mooseRoutesSaveData.loadedMooseRoutes = mod.mooseRoutes.Where(r => !mod.defaultMooseRoutes.Contains(r)).ToList();
+                            SaveLoad.SerializeSaveFile(mod, mod.mooseRoutesSaveData, MooseSoundEffectsMod.ROUTE_SAVE_FILE_NAME);
+                        }
+                        /*if (Button("write all routes to a file"))
+                        {
+                            string contents = "";
+                            for (int i = 0; i < mod.mooseRoutes.Count; i++)
+                            {
+                                contents += createPointsListCode(mod.mooseRoutes[i]);
+                            }
+                            Extentions.writeToFile(ModLoader.GetModSettingsFolder(mod) + $"/routesCode.txt", contents);
+                        }*/
                     }
                 }
             }
@@ -76,7 +99,7 @@ namespace TommoJProductions.MooseSounds
         {
             // Written, 29.08.2022
 
-            if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.M))
+            if (mod.debugGuiKeybind.GetKeybindDown())//Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.M))
             {
                 debugGUIOpen = !debugGUIOpen;
                 closeEditingRouteCheck(debugGUIOpen);
@@ -87,30 +110,31 @@ namespace TommoJProductions.MooseSounds
         {
             // Written, 30.08.2022
 
-            using (new HorizontalScope())
+            using (new HorizontalScope("box"))
             {
                 drawRouteList();
-
-                using (new VerticalScope("box"))
+                if (editingRoute)
                 {
-                    if (editingRoute)
+                    using (new VerticalScope())
                     {
+
                         drawEditRoute();
                     }
-                    else
+                }
+                else
+                {
+                    if (Button("New route"))
                     {
-                        if (Button("New route"))
-                        {
-                            editingRoute = true;
-                            route = new MooseRoute();
-                            deleteRoutePoints();
-                        }
+                        editingRoute = true;
+                        route = new MooseRoute();
                     }
                 }
             }
         }
         private void drawEditRoute()
         {
+
+            Label(route.points.Count + " Points");
             using (new HorizontalScope())
             {
                 if (Button("Add point"))
@@ -127,6 +151,13 @@ namespace TommoJProductions.MooseSounds
                     }
                 }
             }
+            if (routePoints.Count > 0)
+            {
+                if (Button("Teleport to route"))
+                {
+                    mod.player.teleport(routePoints[0].transform.position);
+                }
+            }
             if (!mod.mooseRoutes.Contains(route))
             {
                 if (Button("Add route to list"))
@@ -137,10 +168,8 @@ namespace TommoJProductions.MooseSounds
             }
             else
             {
-                if (Button("Save route" + (checkRouteHasChanged() ? " <color=orange>*</color>" : "")))
-                {
-                    updateRoutePoints();
-                }
+                bool routeChanged = checkRouteHasChanged();
+
                 if (Button(route.routeInUse && route.mooseOnRoute == mod.allAliveMoose[0].mooseGo ? "Next Point" : "Force Moose To run route"))
                 {
                     if (mod.allAliveMoose.Count > 0)
@@ -157,10 +186,20 @@ namespace TommoJProductions.MooseSounds
                         ModConsole.Warning("no alive moose to run extended route...");
                     }
                 }
-                if (Button("write route to a file"))
+                if (Button("Save route" + (routeChanged ? " <color=orange>*</color>" : "")))
                 {
-                    contents += createPointsListCode(route);
-                    Extentions.writeToFile(ModLoader.GetModSettingsFolder(mod) + $"/route.txt", createPointsListCode(route));
+                    updateRoutePoints();
+                }                
+                if (!routeChanged)
+                {
+                    if (Button("Remove route"))
+                    {
+                        mod.mooseRoutes.Remove(route);
+                    }
+                    /*if (Button("write route to a file"))
+                    {
+                        Extentions.writeToFile(ModLoader.GetModSettingsFolder(mod) + $"/route{mod.mooseRoutes.IndexOf(route)}.txt", createPointsListCode(route));
+                    }*/
                 }
             }
             Space(10);
@@ -170,15 +209,19 @@ namespace TommoJProductions.MooseSounds
             }
             if (!mod.animalsMoose.activeInHierarchy)
             {
-                Label("Note! moose arent enabled, (moose are only active during the night)");
+                Label("Note! moose arent enabled");
             }
         }
         private void drawRouteList()
         {
             // Written, 05.09.2022
 
-            using (new VerticalScope("box"))
+            using (new VerticalScope("box", Width(width / 3)))
+            using (routeListScrollView = new ScrollViewScope(routeListScroll, false, false))
             {
+                routeListScrollView.handleScrollWheel = true;
+                routeListScroll = routeListScrollView.scrollPosition;
+                Label("Route Save List");
                 for (int i = 0; i < mod.mooseRoutes.Count; i++)
                 {
                     using (new HorizontalScope())
@@ -237,7 +280,6 @@ namespace TommoJProductions.MooseSounds
             go.AddComponent<Rigidbody>();
             go.name = "RoutePoint" + routePoints.Count + "(xxxxx)";
             go.MakePickable();
-            go.tag = "RAGDOLL";
             routePoints.Add(go);
         }
         private string createPointsListCode(MooseRoute route)
@@ -248,7 +290,7 @@ namespace TommoJProductions.MooseSounds
             string points= "";
             for (int i = 0; i < route.points.Count; i++)
             {
-                points += $"new Vector3({route.points[i].x}f, {route.points[i].y }f, {route.points[i].z }f),\n";
+                points += $"                    new Vector3({route.points[i].x}f, {route.points[i].y }f, {route.points[i].z }f),\n";
             }
             points = points.Remove(points.Length - 2);
 

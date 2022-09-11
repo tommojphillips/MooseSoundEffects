@@ -3,15 +3,20 @@ using UnityEngine;
 
 namespace TommoJProductions.MooseSounds
 {
-    public struct MooseSaveData
+    public struct DeadMooseSaveData
     {
-        public Vector3 position;
-        public Vector3 eulerAngles;
+        public Vector3Info position;
+        public Vector3Info eulerAngles;
         public int meatGiven;
     }
 
     public class MooseSoundsModSaveData
     {
-        public List<MooseSaveData> deadMoose = new List<MooseSaveData>();
+        public List<DeadMooseSaveData> deadMoose = new List<DeadMooseSaveData>();
+    }
+
+    public class MooseRouteSaveData
+    {
+        public List<MooseRoute> loadedMooseRoutes = new List<MooseRoute>();
     }
 }

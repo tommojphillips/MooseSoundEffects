@@ -129,5 +129,24 @@ namespace TommoJProductions.MooseSounds
             sw.Close();
             sw.Dispose();
         }
+        /// <summary>
+        /// Teleports a transform to a world position.
+        /// </summary>
+        /// <param name="transform">The transform to teleport</param>
+        /// <param name="position">The position to teleport the go to.</param>
+        public static void teleport(this Transform transform, Vector3 position)
+        {
+            // Written, 09.07.2022
+
+            Rigidbody rb = transform.GetComponent<Rigidbody>();
+            if (rb)
+                if (!rb.isKinematic)
+                    rb = null;
+                else
+                    rb.isKinematic = true;
+            transform.root.position = position;
+            if (rb)
+                rb.isKinematic = false;
+        }
     }
 }

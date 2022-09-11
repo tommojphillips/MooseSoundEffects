@@ -9,7 +9,7 @@ namespace TommoJProductions.MooseSounds
         // Written, 29.08.2022
 
         private bool extendedRoute;
-        private MooseRoute currentRoute;
+        internal MooseRoute currentRoute { get; private set; }
         public FsmGameObject routeStart;
         public FsmGameObject routeEnd;
         private MooseRunState currentMooseRunState;
@@ -40,12 +40,9 @@ namespace TommoJProductions.MooseSounds
                 {
                     routeStart.Value = currentRoute.routeStart;
                     routeEnd.Value = currentRoute.routeEnd;
-                    ModConsole.Print($"[MooseRoute] Next Point {currentRoute.currentPoint}/{currentRoute.points.Count}.");
                 }
                 else
                 {
-                    ModConsole.Print($"[MooseRoute] Extended route finished. {currentRoute.currentPoint}/{currentRoute.points.Count}");
-
                     resetExtendedRoute();
                     getRandomGameRoute();
                 }
@@ -78,18 +75,16 @@ namespace TommoJProductions.MooseSounds
                     else
                     {
                         getRandomGameRoute();
-                        ModConsole.Print("[MooseRoute] Extended route is in use.. Randomizing Route");
                     }
                 }
                 else
                 {
                     getRandomGameRoute();
-                    ModConsole.Print("[MooseRoute] No Extended route set up.. using DEFAULT Randomizing Route logic");
                 }
             }
         }
 
-        private void resetExtendedRoute()
+        internal void resetExtendedRoute()
         {
             // Written, 05.09.2022
 
