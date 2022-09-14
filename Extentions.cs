@@ -26,8 +26,12 @@ namespace TommoJProductions.MooseSounds
         {
             // Written, 26.08.2022
 
-            int randomIndex = getRandomIndex(array.Count);
-            return array[randomIndex];
+            return array.getRandom(out int _);
+        }
+        public static T getRandom<T>(this List<T> array, out int index) where T : class
+        {
+            index = getRandomIndex(array.Count);
+            return array[index];
         }
         public static int getRandomIndex(int length)
         {

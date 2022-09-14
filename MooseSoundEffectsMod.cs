@@ -94,6 +94,7 @@ namespace TommoJProductions.MooseSounds
         private bool loadDefaultRoutes = true;
 
         private SettingsSliderInt extraMooseSlider;
+        private SettingsSlider extendedRouteChanceSlider;
         private SettingsCheckBox loadDefaultRoutesCheckbox;
         internal Keybind debugGuiKeybind;
 
@@ -101,7 +102,11 @@ namespace TommoJProductions.MooseSounds
         internal MooseRouteSaveData mooseRoutesSaveData;
         private int totalSpawnedMoose;
 
+        internal float extendedRouteChance = 15.87f;
+
         #endregion
+
+        #region Constructors
 
         public MooseSoundEffectsMod() 
         {
@@ -109,6 +114,8 @@ namespace TommoJProductions.MooseSounds
 
             instance = this;
         }
+
+        #endregion
 
         #region Mod setup
 
@@ -127,17 +134,24 @@ namespace TommoJProductions.MooseSounds
             extraMooseSlider = Settings.AddSlider(this, "numberOfExtraMoose", "Number of extra moose", 0, 100, numberOfExtraMoose,
                 () => numberOfExtraMoose = extraMooseSlider.GetValue());
             Settings.AddDynamicText(this, "The number of additional moose to spawn when game starts.");
-            
-            loadDefaultRoutesCheckbox = Settings.AddCheckBox(this, "loadDefaultRoutes", "Load default routes", loadDefaultRoutes,
+
+            extendedRouteChanceSlider = Settings.AddSlider(this, "extendedRouteChance", "Extended route chance", 0, 100, extendedRouteChance,
+                () => extendedRouteChance = extendedRouteChanceSlider.GetValue(), 2);
+            Settings.AddDynamicText(this, "The Chance that a moose will choose an extended route.");
+
+            loadDefaultRoutesCheckbox = Settings.AddCheckBox(this, "loadDefaultRoutes", "Load default extended routes", loadDefaultRoutes,
                 () => loadDefaultRoutes = loadDefaultRoutesCheckbox.GetValue());
             
             Settings.AddDynamicHeader(this, "Save info");
             Settings.AddButton(this, "destroyDeadMoose", "Destroy dead moose", destroyDeadMoose);
             Settings.AddButton(this, "deleteSaveData", "Delete save data", deleteSaveData);
+
+            debugGuiKeybind = Keybind.Add(this, "debugGUItoggle", "Toggle GUI", KeyCode.M, KeyCode.LeftAlt);
         }
         public override void ModSettingsLoaded()
         {
             numberOfExtraMoose = extraMooseSlider.GetValue();
+            extendedRouteChance = extendedRouteChanceSlider.GetValue();
             loadDefaultRoutes = loadDefaultRoutesCheckbox.GetValue();
         }
        
@@ -173,7 +187,6 @@ namespace TommoJProductions.MooseSounds
         {
             // Written, 23.08.2022
 
-            debugGuiKeybind = Keybind.Add(this, "debugGUItoggle", "Toggle GUI", KeyCode.M, KeyCode.LeftAlt);
             mooseSoundsModGo = new GameObject("Moose Sounds");
             animalsMoose = GameObject.Find("MAP/StreetLights").GetPlayMaker("Lights Switch").FsmVariables.GetFsmGameObject("Mooses").Value;
             player = PlayMakerGlobals.Instance.Variables.FindFsmGameObject("SavePlayer").Value.transform;
@@ -210,8 +223,6 @@ namespace TommoJProductions.MooseSounds
 
             GameObject routes = animalsMoose.transform.Find("Routes").gameObject;
             gameRoutes = routes.getChildren();
-            extendedRouteGo = new GameObject("ExtendedRoute");
-            extendedRouteGo.transform.parent = routes.transform;
             loadRouteSaveData();
             addRoutes();
         }
@@ -474,6 +485,112 @@ namespace TommoJProductions.MooseSounds
                     new Vector3Info(1170.119f, 3.523758f, -900.7452f)
                 }
             });
+            defaultMooseRoutes.Add(new MooseRoute()
+            {
+                points = new List<Vector3Info>()
+                {
+                    new Vector3Info(1140.399f, 2.989685f, -755.9247f),
+                    new Vector3Info(999.8078f, 0.4141281f, -712.4639f),
+                    new Vector3Info(978.4597f, 1.95643f, -672.5821f),
+                    new Vector3Info(931.7979f, -0.3217928f, -610.1893f),
+                    new Vector3Info(911.3645f, -3.554852f, -549.0034f),
+                    new Vector3Info(887.0543f, -3.837298f, -491.0518f),
+                    new Vector3Info(855.968f, -2.863202f, -413.1786f),
+                    new Vector3Info(787.4489f, -2.618601f, -350.8371f),
+                    new Vector3Info(665.6988f, -0.7311462f, -238.7337f),
+                    new Vector3Info(599.9322f, -3.212254f, -154.3911f),
+                    new Vector3Info(456.366f, -2.041781f, -3.72878f),
+                    new Vector3Info(348.0186f, -1.703194f, -1.809715f),
+                    new Vector3Info(193.0042f, -0.9882046f, 5.691359f),
+                    new Vector3Info(-138.2318f, -4.004526f, -37.4853f)
+                }
+            });
+            defaultMooseRoutes.Add(new MooseRoute()
+            {
+                points = new List<Vector3Info>()
+                {
+                    new Vector3Info(2168.745f, -1.600242f, 50.44838f),
+                    new Vector3Info(108.2575f, -1.438687f, -1358.769f)
+                }
+            });
+            defaultMooseRoutes.Add(new MooseRoute()
+            {
+                points = new List<Vector3Info>()
+                {
+                    new Vector3Info(1538.957f, 2.70702f, 573.5937f),
+                    new Vector3Info(1569.39f, 3.751523f, 646.9548f),
+                    new Vector3Info(1561.454f, 4.513926f, 679.8321f),
+                    new Vector3Info(1541.268f, 4.653128f, 729.5426f),
+                    new Vector3Info(1529.498f, 5.182742f, 753.5721f),
+                    new Vector3Info(1415.657f, -1.603974f, 743.022f),
+                    new Vector3Info(1325.974f, 5.924478f, 773.6427f),
+                    new Vector3Info(1026.783f, 10.49263f, 948.8671f)
+                }
+            });
+            defaultMooseRoutes.Add(new MooseRoute()
+            {
+                points = new List<Vector3Info>()
+                {
+                    new Vector3Info(372.7263f, 1.216762f, 1419.835f),
+                    new Vector3Info(252.6458f, 9.520753f, 1357.16f),
+                    new Vector3Info(193.8524f, 7.987349f, 1334.3f),
+                    new Vector3Info(-197.4101f, 1.635632f, 1241.482f),
+                    new Vector3Info(-446.6278f, 1.25078f, 1136.257f)
+                }
+            });
+            defaultMooseRoutes.Add(new MooseRoute()
+            {
+                points = new List<Vector3Info>()
+                {
+                    new Vector3Info(-1152.797f, -0.9229338f, 1026.572f),
+                    new Vector3Info(-1494.61f, 4.930396f, 1309.994f),
+                    new Vector3Info(-1545.403f, 5.283208f, 1339.842f),
+                    new Vector3Info(-1545.696f, 5.283203f, 1391.339f),
+                    new Vector3Info(-1497.062f, 5.283401f, 1389.326f),
+                    new Vector3Info(-1495.202f, 4.946026f, 1310.307f),
+                    new Vector3Info(-1425.42f, 3.336873f, 1336.821f)
+                }
+            });
+            defaultMooseRoutes.Add(new MooseRoute()
+            {
+                points = new List<Vector3Info>()
+                {
+                    new Vector3Info(-164.4125f, -3.423034f, 1310.204f),
+                    new Vector3Info(-108.1886f, -2.914493f, 1262.963f),
+                    new Vector3Info(-44.18798f, -3.221785f, 1285.715f),
+                    new Vector3Info(221.5115f, 9.68434f, 1348.766f),
+                    new Vector3Info(239.9601f, 11.20246f, 1345.168f),
+                    new Vector3Info(454.3334f, 8.929161f, 1355.919f),
+                    new Vector3Info(752.4933f, -0.2193314f, 1191.667f)
+                }
+            });
+            defaultMooseRoutes.Add(new MooseRoute()
+            {
+                points = new List<Vector3Info>()
+                {
+                    new Vector3Info(1682.935f, 7.115799f, 746.2823f),
+                    new Vector3Info(1829.344f, 5.089637f, 476.8282f),
+                    new Vector3Info(1901.412f, 4.408878f, 441.9554f),
+                    new Vector3Info(1946f, 4.696722f, 373.2495f),
+                    new Vector3Info(1926.087f, 7.620875f, 282.5417f),
+                    new Vector3Info(1928.484f, 4.379279f, 197.2521f),
+                    new Vector3Info(1955.681f, 1.454204f, 75.03235f),
+                    new Vector3Info(1974.556f, 7.07312f, -202.3929f),
+                    new Vector3Info(1964.073f, 3.598529f, -331.113f)
+                }
+            });
+            defaultMooseRoutes.Add(new MooseRoute()
+            {
+                points = new List<Vector3Info>()
+                {
+                    new Vector3Info(-1536.885f, 10.95175f, -605.9587f),
+                    new Vector3Info(-1325.328f, -2.288704f, -672.626f),
+                    new Vector3Info(-1218.941f, 6.967763f, -709.8847f),
+                    new Vector3Info(-1117.192f, 3.114573f, -602.8232f),
+                    new Vector3Info(-1056.28f, 3.984592f, -561.5817f),
+                    new Vector3Info(-731.3906f, 1.563953f, -366.3472f)
+                }
+            });
 
             if (loadDefaultRoutes)
             {
@@ -501,7 +618,6 @@ namespace TommoJProductions.MooseSounds
             deadMoosePrefab.tag = "RAGDOLL";
             deadMoosePrefab.SetActive(false);
             deadMoosePrefab.transform.parent = mooseSoundsModGo.transform;
-            //UnityEngine.Object.Destroy(deadMoosePrefab.GetPlayMaker(PLAYMAKER_ADD_FORCE_NAME));            
         }
         private void createTowHookPrefab()
         {
@@ -609,11 +725,7 @@ namespace TommoJProductions.MooseSounds
             // extended route
             PlayMakerFSM fsm = mooseGo.GetPlayMaker("Move");
             moose.movePlayMaker = fsm;
-            FsmState randRoute = fsm.GetState("Randomize route");
-            moose.extendedRouteState = new MooseExtendedRouteStateAction();
-            moose.extendedRouteState.routeStart = fsm.FsmVariables.FindFsmGameObject("RouteStart");
-            moose.extendedRouteState.routeEnd = fsm.FsmVariables.FindFsmGameObject("RouteEnd");            
-            randRoute.InsertAction(2, moose.extendedRouteState);
+            moose.extendedRouteState = new MooseExtendedRouteStateAction(moose);
 
             allAliveMoose.Add(moose);
 
@@ -814,16 +926,12 @@ namespace TommoJProductions.MooseSounds
                 audioSource.Play();
             }
             UnityEngine.Object.Destroy(callback);
-
-            ModConsole.Print($"Moose die sound");
         }
         private void preOnMooseDead(MooseRunState callback)
         {
             // Written, 28.08.2022
 
-            allAliveMoose.Remove(allAliveMoose.firstOrDefault(m => m.index == callback.moose.index));
-            
-            ModConsole.Print($"Moose{callback.moose.index} death");
+            allAliveMoose.Remove(allAliveMoose.firstOrDefault(m => m.index == callback.moose.index));            
         }
         private void animalsMooseCallback_onDisable()
         {

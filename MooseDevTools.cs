@@ -25,6 +25,7 @@ namespace TommoJProductions.MooseSounds
 
         private bool editingRoute = false;
         private MooseRoute route;
+        private Moose lastForcedMoose;
         private Vector2 routeListScroll;
         private ScrollViewScope routeListScrollView;
         private readonly List<GameObject> routePoints = new List<GameObject>();
@@ -45,6 +46,7 @@ namespace TommoJProductions.MooseSounds
                 using (new AreaScope(new Rect(Screen.width / 2 - width / 2, top, width, height)))
                 {
                     Label($"Moose Mod DEV\nAlive moose: {mod.allAliveMoose.Count}\nDead moose: {mod.allDeadMoose.Count}");
+                    Label($"{mod.extendedRouteChance}% chance ({mod.extendedRouteChance / 100})");
                     Space(10);
                     if (Button(mod.animalsMoose.activeInHierarchy ? "Disable Mooses" : "Enable Mooses" + (editingRoute ? " <color=red>*</color>" : "")))
                     {
@@ -82,15 +84,16 @@ namespace TommoJProductions.MooseSounds
                             mod.mooseRoutesSaveData.loadedMooseRoutes = mod.mooseRoutes.Where(r => !mod.defaultMooseRoutes.Contains(r)).ToList();
                             SaveLoad.SerializeSaveFile(mod, mod.mooseRoutesSaveData, MooseSoundEffectsMod.ROUTE_SAVE_FILE_NAME);
                         }
-                        /*if (Button("write all routes to a file"))
+                        if (Button("write all routes to a file"))
                         {
                             string contents = "";
-                            for (int i = 0; i < mod.mooseRoutes.Count; i++)
+                            MooseRoute[] routes = mod.mooseRoutes.Where(r => !mod.defaultMooseRoutes.Contains(r)).ToArray();
+                            for (int i = 0; i < routes.Length; i++)
                             {
-                                contents += createPointsListCode(mod.mooseRoutes[i]);
+                                contents += createPointsListCode(routes[i]);
                             }
                             Extentions.writeToFile(ModLoader.GetModSettingsFolder(mod) + $"/routesCode.txt", contents);
-                        }*/
+                        }
                     }
                 }
             }
@@ -99,7 +102,7 @@ namespace TommoJProductions.MooseSounds
         {
             // Written, 29.08.2022
 
-            if (mod.debugGuiKeybind.GetKeybindDown())//Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(KeyCode.M))
+            if (mod.debugGuiKeybind.GetKeybindDown())
             {
                 debugGUIOpen = !debugGUIOpen;
                 closeEditingRouteCheck(debugGUIOpen);
@@ -170,20 +173,37 @@ namespace TommoJProductions.MooseSounds
             {
                 bool routeChanged = checkRouteHasChanged();
 
-                if (Button(route.routeInUse && route.mooseOnRoute == mod.allAliveMoose[0].mooseGo ? "Next Point" : "Force Moose To run route"))
+                using (new HorizontalScope())
                 {
-                    if (mod.allAliveMoose.Count > 0)
+                    if (Button("Force Moose To run route"))
                     {
-                        MooseExtendedRouteStateAction ext = mod.allAliveMoose[0].extendedRouteState;
-                        ext.forceExtendedRoute = true;
-                        ext.extendedRouteToForce = route;
-
-                        mod.allAliveMoose[0].movePlayMaker.enabled = false;
-                        mod.allAliveMoose[0].movePlayMaker.enabled = true;
+                        if (mod.allAliveMoose.Count > 0)
+                        {
+                            Moose[] moose = mod.allAliveMoose.Where(m => !m.extendedRouteState.extendedRoute).ToArray();
+                            if (moose.Length > 0)
+                            {
+                                lastForcedMoose = moose[0];
+                                lastForcedMoose.extendedRouteState.forceExtendedRoute = true;
+                                lastForcedMoose.extendedRouteState.extendedRouteToForce = route;
+                                forceMooseToChooseRoute();
+                            }
+                            else
+                            {
+                                ModConsole.Warning("All alive moose are running an extended route...");
+                            }
+                        }
+                        else
+                        {
+                            ModConsole.Warning("no alive moose to run extended route...");
+                        }
                     }
-                    else
+                    if (lastForcedMoose.extendedRouteState?.currentRoute == route)
                     {
-                        ModConsole.Warning("no alive moose to run extended route...");
+                        if (Button($"Next point (Moose{lastForcedMoose.index})"))
+                        {
+                            forceMooseToChooseRoute();
+                        }
+                        Label($"{lastForcedMoose.extendedRouteState.currentPoint}/{route.points.Count}");
                     }
                 }
                 if (Button("Save route" + (routeChanged ? " <color=orange>*</color>" : "")))
@@ -196,10 +216,10 @@ namespace TommoJProductions.MooseSounds
                     {
                         mod.mooseRoutes.Remove(route);
                     }
-                    /*if (Button("write route to a file"))
+                    if (Button("write route to a file"))
                     {
                         Extentions.writeToFile(ModLoader.GetModSettingsFolder(mod) + $"/route{mod.mooseRoutes.IndexOf(route)}.txt", createPointsListCode(route));
-                    }*/
+                    }
                 }
             }
             Space(10);
@@ -212,6 +232,13 @@ namespace TommoJProductions.MooseSounds
                 Label("Note! moose arent enabled");
             }
         }
+
+        private void forceMooseToChooseRoute()
+        {
+            lastForcedMoose.movePlayMaker.enabled = false;
+            lastForcedMoose.movePlayMaker.enabled = true;
+        }
+
         private void drawRouteList()
         {
             // Written, 05.09.2022
@@ -286,11 +313,11 @@ namespace TommoJProductions.MooseSounds
         {
             // Written, 05.09.2022
 
-            string code = "\r\n            mooseRoutes.Add(new MooseRoute()\r\n            {\r\n                points = new List<Vector3>()\r\n                {\r\n                    {0}\r\n                }\r\n            });";
+            string code = "\r\n            defaultMooseRoutes.Add(new MooseRoute()\r\n            {\r\n                points = new List<Vector3Info>()\r\n                {\r\n{0}\r\n                }\r\n            });";
             string points= "";
             for (int i = 0; i < route.points.Count; i++)
             {
-                points += $"                    new Vector3({route.points[i].x}f, {route.points[i].y }f, {route.points[i].z }f),\n";
+                points += $"                    new Vector3Info({route.points[i].x}f, {route.points[i].y }f, {route.points[i].z }f),\n";
             }
             points = points.Remove(points.Length - 2);
 

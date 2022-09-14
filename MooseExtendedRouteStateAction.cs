@@ -2,104 +2,131 @@
 using HutongGames.PlayMaker;
 using MSCLoader;
 
+using UnityEngine;
+
 namespace TommoJProductions.MooseSounds
 {
     public class MooseExtendedRouteStateAction : FsmStateAction
     {
         // Written, 29.08.2022
 
-        private bool extendedRoute;
-        internal MooseRoute currentRoute { get; private set; }
-        public FsmGameObject routeStart;
-        public FsmGameObject routeEnd;
-        private MooseRunState currentMooseRunState;
         public bool forceExtendedRoute;
+        internal FsmGameObject routeStartFsm;
+        internal FsmGameObject routeEndFsm;
         internal MooseRoute extendedRouteToForce;
+        private Moose moose;
 
-        private void onMooseDead(MooseRunState obj)
+        internal bool extendedRoute { get; private set; }
+        internal int currentPoint { get; private set; }
+        internal MooseRoute currentRoute { get; private set; }
+        internal GameObject routeStart { get; private set; }
+        internal GameObject routeEnd { get; private set; }
+
+        public MooseExtendedRouteStateAction(Moose moose)
         {
-            resetExtendedRoute();
-            ModConsole.Print("[MooseRoute] Moose died while on extended route.");
+            this.moose = moose;
+
+            routeStartFsm = moose.movePlayMaker.FsmVariables.FindFsmGameObject("RouteStart");
+            routeEndFsm = moose.movePlayMaker.FsmVariables.FindFsmGameObject("RouteEnd");
+            routeStart = new GameObject("MooseRouteStart");
+            routeEnd = new GameObject("MooseRouteEnd");
+
+            FsmState randRoute = moose.movePlayMaker.GetState("Randomize route");
+            randRoute.InsertAction(2, this);
         }
 
         public override void OnEnter()
         {
             // Written, 29.08.2022
 
-            onRandomizeRoute();
+            randomizeRoute();
             Finish();
         }
 
-        void onRandomizeRoute()
+        private void randomizeRoute()
         {
             // Written, 29.08.2022
 
+            float chance = UnityEngine.Random.value;
+            bool extendedRouteChancePicked = chance < MooseSoundEffectsMod.instance.extendedRouteChance / 100;
+            int randomIndex = -1;
+
             if (extendedRoute)
             {
-                if (currentRoute.setNextPoint())
-                {
-                    routeStart.Value = currentRoute.routeStart;
-                    routeEnd.Value = currentRoute.routeEnd;
-                }
-                else
+                if (!setNextPoint())
                 {
                     resetExtendedRoute();
                     getRandomGameRoute();
                 }
             }
-            else if (MooseSoundEffectsMod.instance.extendedRouteGo == routeStart.Value || forceExtendedRoute)
+            else
             {
-                if (MooseSoundEffectsMod.instance.mooseRoutes.Count > 0)
+                if (extendedRouteChancePicked || forceExtendedRoute)
                 {
-                    if (forceExtendedRoute)
+                    if (MooseSoundEffectsMod.instance.mooseRoutes.Count > 0)
                     {
-                        currentRoute = extendedRouteToForce;
-                        forceExtendedRoute = false;
-                    }
-                    else
-                    {
-                        currentRoute = MooseSoundEffectsMod.instance.mooseRoutes.getRandom();
-                    }
+                        if (forceExtendedRoute)
+                        {
+                            currentRoute = extendedRouteToForce;
+                            forceExtendedRoute = false;
+                        }
+                        else
+                        {
+                            currentRoute = MooseSoundEffectsMod.instance.mooseRoutes.getRandom(out randomIndex);
+                        }
 
-                    if (!currentRoute.routeInUse)
-                    {
                         extendedRoute = true;
-                        currentRoute.routeInUse = true;
-                        routeStart.Value = currentRoute.routeStart;
-                        routeEnd.Value = currentRoute.routeEnd;
-                        currentRoute.setNextPoint();
-                        currentMooseRunState = Owner.GetComponent<MooseRunState>();
-                        currentMooseRunState.onDestroy += onMooseDead;
-                        currentRoute.mooseOnRoute = currentMooseRunState.moose.mooseGo;
+                        setNextPoint();
+                        moose.runState.onDestroy += onMooseDead;
                     }
                     else
                     {
                         getRandomGameRoute();
+                        ModConsole.Print($"[MooseSounds] - No extended routes. (count 0).");
                     }
                 }
-                else
-                {
-                    getRandomGameRoute();
-                }
+                ModConsole.Print($"[MooseSounds] - DB - Moose{moose.index} {MooseSoundEffectsMod.instance.extendedRouteChance}% ({chance * 100}) {(extendedRouteChancePicked ? $"Extended Route {randomIndex}" : "Stock")}");
             }
         }
-
+        private void getRandomGameRoute()
+        {
+            routeStartFsm.Value = MooseSoundEffectsMod.instance.gameRoutes.getRandom();
+            routeEndFsm.Value = routeStartFsm.Value.getChildren().getRandom();
+        }
         internal void resetExtendedRoute()
         {
             // Written, 05.09.2022
 
             extendedRoute = false;
-            currentMooseRunState.onDestroy -= onMooseDead;
-            currentRoute.reset();
-            currentRoute.routeInUse = false;
-            currentRoute.mooseOnRoute = null;
+            moose.runState.onDestroy -= onMooseDead;
+            currentPoint = 0;
             currentRoute = null;
         }
 
-        void getRandomGameRoute()
+        public bool setNextPoint()
         {
-            routeStart.Value = MooseSoundEffectsMod.instance.gameRoutes.getRandom();
-            routeEnd.Value = routeStart.Value.getChildren().getRandom();
+            if (currentPoint < currentRoute.points.Count - 1)
+            {
+                currentPoint++;
+
+                routeStartFsm.Value = routeStart;
+                routeEndFsm.Value = routeEnd;
+
+                routeStart.transform.position = currentRoute.points[currentPoint - 1];
+                routeEnd.transform.position = currentRoute.points[currentPoint];
+                
+                return true;
+            }
+            return false;
         }
+
+        #region Event Handlers
+
+        private void onMooseDead(MooseRunState obj)
+        {
+            resetExtendedRoute();
+        }
+
+        #endregion
     }
 }
