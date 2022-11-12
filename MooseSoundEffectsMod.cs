@@ -5,9 +5,13 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.ComTypes;
 
+using Resources = MooseSounds.Properties.Resources;
+
 using AudioLibrary;
 
 using HutongGames.PlayMaker;
+
+using MooseSounds.Properties;
 
 using MSCLoader;
 
@@ -187,6 +191,8 @@ namespace TommoJProductions.MooseSounds
         {
             // Written, 23.08.2022
 
+            loadWatermark();
+
             mooseSoundsModGo = new GameObject("Moose Sounds");
             animalsMoose = GameObject.Find("MAP/StreetLights").GetPlayMaker("Lights Switch").FsmVariables.GetFsmGameObject("Mooses").Value;
             player = PlayMakerGlobals.Instance.Variables.FindFsmGameObject("SavePlayer").Value.transform;
@@ -213,9 +219,38 @@ namespace TommoJProductions.MooseSounds
             ModConsole.Print("[MooseSounds] - loaded");
         }
 
+
         #endregion
 
         #region Methods
+
+        private void loadWatermark()
+        {
+            // Written, 12.11.2022
+
+            AssetBundle ab = AssetBundle.CreateFromMemoryImmediate(Resources.penttiwatermarks);
+            Material mat2 = ab.LoadAsset("Junamiestarra kokonainen 3.mat") as Material;
+            ab.Unload(false);
+
+            createWatermark(new Vector3(-19, -1.5f, -80), new Vector3(0, 180, 0), mat2);
+        }
+        private void createWatermark(Vector3 pos, Vector3 euler, Material material)
+        {
+            // Written, 12.11.2022
+
+            GameObject watermark = new GameObject(material.name + "_watermark");
+            watermark.transform.position = pos;
+            watermark.transform.eulerAngles = euler;
+
+            GameObject front = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            front.GetComponent<MeshRenderer>().material = material;
+            front.transform.SetParent(watermark.transform, false);
+
+            GameObject back = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            back.GetComponent<MeshRenderer>().material = material;
+            back.transform.localScale = new Vector3(-1, 1, -1);
+            back.transform.SetParent(watermark.transform, false);
+        }
 
         private void initMooseRoutes() 
         {
